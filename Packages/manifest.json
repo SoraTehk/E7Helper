@@ -3,6 +3,7 @@
     "com.acegikmo.mathfs": "https://github.com/FreyaHolmer/Mathfs.git",
     "com.cysharp.unitask": "2.5.10",
     "com.github-glitchenzo.nugetforunity": "4.5.0",
+    "com.hecomi.uwindowcapture": "1.1.0",
     "com.unity.feature.development": "1.0.2",
     "com.unity.inputsystem": "1.17.0",
     "com.unity.mathematics": "1.3.3",
@@ -50,6 +51,7 @@
       "scopes": [
         "com.cysharp.unitask",
         "com.github-glitchenzo.nugetforunity",
+        "com.hecomi.uwindowcapture",
         "jillejr.newtonsoft.json-for-unity.converters"
       ]
     }
