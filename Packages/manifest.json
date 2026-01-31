@@ -6,6 +6,7 @@
     "com.unity.nuget.newtonsoft-json": "3.2.2",
     "com.unity.timeline": "1.8.10",
     "com.unity.ugui": "2.0.0",
+    "jillejr.newtonsoft.json-for-unity.converters": "1.6.3",
     "com.unity.modules.accessibility": "1.0.0",
     "com.unity.modules.ai": "1.0.0",
     "com.unity.modules.androidjni": "1.0.0",
@@ -44,7 +45,8 @@
       "name": "package.openupm.com",
       "url": "https://package.openupm.com",
       "scopes": [
-        "com.github-glitchenzo.nugetforunity"
+        "com.github-glitchenzo.nugetforunity",
+        "jillejr.newtonsoft.json-for-unity.converters"
       ]
     }
   ]
