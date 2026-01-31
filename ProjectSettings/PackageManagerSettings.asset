@@ -34,6 +34,7 @@ MonoBehaviour:
     m_Name: package.openupm.com
     m_Url: https://package.openupm.com
     m_Scopes:
+    - com.cysharp.unitask
     - com.github-glitchenzo.nugetforunity
     - jillejr.newtonsoft.json-for-unity.converters
     m_IsDefault: 0
