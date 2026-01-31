@@ -218,6 +218,8 @@ namespace SoraTehk.E7Helper {
 
                 OutputString = scannedStr;
 
+                ParseEquipment();
+
                 // Clean up
                 texMgr.Release(mainStatTex);
                 texMgr.Release(subStatsTex);
@@ -234,6 +236,61 @@ namespace SoraTehk.E7Helper {
                 WindowCaptureDebugText.text = sb.ToString();
 
                 m_IsScanning = false;
+            }
+        }
+
+        [FoldoutGroup("Legacy")] public TMP_Text GearRankText = null!;
+        [FoldoutGroup("Legacy")] public TMP_Text GearScore1Text = null!;
+        [FoldoutGroup("Legacy")] public TMP_Text GearScore2Text = null!;
+        [FoldoutGroup("Legacy")] public TMP_Text GearScore3Text = null!;
+        [FoldoutGroup("Legacy")] public TMP_Text GearScore4Text = null!;
+        [FoldoutGroup("Legacy")] public TMP_Text GearScoreTotalText = null!;
+        [FoldoutGroup("Legacy")] public TMP_Text GearScoreTotalModdedText = null!;
+
+        private void ParseEquipment() {
+            var equipment = new Equipment();
+            equipment.TryParse(OutputString);
+
+            GearRankText.text = equipment.Rank.ToString();
+
+            var gearScoreTextArr = new TMP_Text[] {
+                GearScore1Text,
+                GearScore2Text,
+                GearScore3Text,
+                GearScore4Text
+            };
+            foreach (var gsText in gearScoreTextArr) {
+                gsText.text = 0m.ToString("F1");
+            }
+
+            decimal gearScoreTotal = 0m;
+            decimal gearScoreLowest = 8m;
+            decimal gearScoreTotalModded = 0m;
+            for (var i = 0; i < equipment.Stats.Count; i++) {
+                decimal gearScore = equipment.Stats[i].GetGearScore();
+                gearScoreTextArr[i].text = gearScore.ToString("F1");
+                gearScoreTotal += gearScore;
+                gearScoreTotalModded += gearScore;
+                // Finding out which are the lowest gear score stat
+                gearScoreLowest = Math.Min(gearScoreLowest, gearScore);
+            }
+
+            // Replace the lowest gear score stat with 8
+            gearScoreTotalModded += -gearScoreLowest + 8;
+
+            GearScoreTotalText.text = gearScoreTotal.ToString("F2");
+            GearScoreTotalModdedText.text = gearScoreTotalModded.ToString("F2");
+
+            // Text formating for fast gear check
+            if (Constants.EquipmentRank2GearScoreMinMax.TryGetValue(equipment.Rank, out var value)) {
+                GearScoreTotalText.color = gearScoreTotal < value.Min ? Color.red :
+                    gearScoreTotal >= value.Max ? Color.green : Color.yellow;
+                GearScoreTotalModdedText.color = gearScoreTotalModded < value.Min ? Color.red :
+                    gearScoreTotalModded >= value.Max ? Color.green : Color.yellow;
+            }
+            else {
+                GearScoreTotalText.color = Color.white;
+                GearScoreTotalModdedText.color = Color.white;
             }
         }
     }
