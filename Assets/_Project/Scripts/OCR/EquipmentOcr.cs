@@ -3,6 +3,7 @@ using System.IO;
 using System.Runtime.InteropServices;
 using System.Text;
 using Cysharp.Threading.Tasks;
+using Freya;
 using PixelSquare.TesseractOCR;
 using Sirenix.OdinInspector;
 using SoraTehk.E7Helper.Interop;
@@ -21,15 +22,24 @@ namespace SoraTehk.E7Helper {
 
         [FoldoutGroup("Debug")] public TMP_Text WindowCaptureDebugText = null!;
         [FoldoutGroup("Debug")] public RawImage BufferImage = null!;
+        [FoldoutGroup("Debug")] public RawImage MainStatImage = null!;
+        [FoldoutGroup("Debug")] public RawImage SubStatsImage = null!;
+        [FoldoutGroup("Debug"), MultiLineProperty(5)] public string OutputString = null!;
 
         [FoldoutGroup("Scene"), SceneObjectsOnly] public UwcWindowTexture WindowCapture = null!;
         [FoldoutGroup("Scene"), SceneObjectsOnly] public Canvas Canvas = null!;
         [FoldoutGroup("Scene"), SceneObjectsOnly] public CanvasScaler CanvasScaler = null!;
         [FoldoutGroup("Scene"), SceneObjectsOnly] public RawImage CapturedWindowImage = null!;
+        [FoldoutGroup("Scene"), SceneObjectsOnly] public RectTransformController MainStatRectController = null!;
+        [FoldoutGroup("Scene"), SceneObjectsOnly] public RectTransformController SubStatsRectController = null!;
 
         [FoldoutGroup("Config")] public string OcrLanguageId = "eng";
+        [FoldoutGroup("Config"), Range(0f, 1f)] public float BlackThreshold = 0.54f;
+        [FoldoutGroup("Config"), Range(0f, 1f)] public float AlphaThreshold = 0.88f;
 
         [FoldoutGroup("Runtime")] public Texture2D? m_BufferTexture2D;
+        [FoldoutGroup("Runtime")] public Texture2D? m_MainStatTexture2D;
+        [FoldoutGroup("Runtime")] public Texture2D? m_SubStatsTexture2D;
 
         private IOpticalCharacterReader m_Ocr = null!;
         private Color32[] m_CurrPixels32;
@@ -49,6 +59,15 @@ namespace SoraTehk.E7Helper {
             CapturedWindowImage.rectTransform.anchorMin = new Vector2(0, 1); // Top-left corner
             CapturedWindowImage.rectTransform.anchorMax = new Vector2(0, 1); // Top-left corner
             CapturedWindowImage.rectTransform.pivot = new Vector2(0, 1); // Top-left corner
+
+            // TODO: Forced settings (but saved performance since we don't need to calculate later in Update)
+            MainStatRectController.RectTransform.anchorMin = new Vector2(0, 0); // Bottom-left corner
+            MainStatRectController.RectTransform.anchorMax = new Vector2(0, 0); // Bottom-left corner
+            MainStatRectController.RectTransform.pivot = new Vector2(0, 0); // Bottom-left corner
+
+            SubStatsRectController.RectTransform.anchorMin = new Vector2(0, 0); // Bottom-left corner
+            SubStatsRectController.RectTransform.anchorMax = new Vector2(0, 0); // Bottom-left corner
+            SubStatsRectController.RectTransform.pivot = new Vector2(0, 0); // Bottom-left corner
         }
 
         private void Start() {
@@ -119,6 +138,9 @@ namespace SoraTehk.E7Helper {
                 // Calculate the scale factor based on the referenceResolution and matchWidthOrHeight
                 var canvasScaleX = Screen.width / CanvasScaler.referenceResolution.x;
                 var canvasScaleY = Screen.height / CanvasScaler.referenceResolution.y;
+                // Calculate the actual window scale factor based on the referenceResolution and matchWidthOrHeight
+                var windowScaleX = m_BufferTexture2D.width / CanvasScaler.referenceResolution.x;
+                var windowScaleY = m_BufferTexture2D.height / CanvasScaler.referenceResolution.y;
                 // Position will be scaled to fit inside referenceResolution
                 var titleRectHeight = 39;
                 // TODO: Find another way to do this
@@ -143,8 +165,64 @@ namespace SoraTehk.E7Helper {
                 CapturedWindowImage.rectTransform.anchoredPosition = outputPos;
                 CapturedWindowImage.rectTransform.localScale = outputScale;
 
+                // Cropping the main stat
+                int mainStatTexStartX = Mathfs.RoundToInt(MainStatRectController.GetAnchoredX() * windowScaleX);
+                int mainStatTexStartY = Mathfs.RoundToInt(MainStatRectController.GetAnchoredY() * windowScaleY);
+                int mainStatTexWidth = Mathfs.RoundToInt(MainStatRectController.GetWidth() * windowScaleX);
+                int mainStatTexHeight = Mathfs.RoundToInt(MainStatRectController.GetHeight() * windowScaleY);
+                var mainStatTex = texMgr.Acquire(mainStatTexWidth, mainStatTexHeight, m_BufferTexture2D.format);
+                Texture2DExtension.CopyCroppedPixels(mainStatTex, m_BufferTexture2D, mainStatTexStartX, mainStatTexStartY);
+                mainStatTex.ApplyBlackMask(BlackThreshold, true);
+
+                // Ocr texture to crop
+                texMgr.Release(m_MainStatTexture2D);
+                // TextureFormat.RGB24 because Tesseract only supports 3 bytes per pixel
+                m_MainStatTexture2D = texMgr.Acquire(mainStatTexWidth, mainStatTexHeight, TextureFormat.RGB24);
+                m_MainStatTexture2D.SetPixels(mainStatTex.GetPixels());
+                m_MainStatTexture2D.Apply();
+
+                // Scan
+                m_Ocr.SetImage(m_MainStatTexture2D);
+                string scannedStr = m_Ocr.GetText().Trim() + "\n";
+
+                // Cropping the sub stats
+                int subStatsTexStartX = Mathfs.RoundToInt(SubStatsRectController.GetAnchoredX() * windowScaleX);
+                int subStatsTexStartY = Mathfs.RoundToInt(SubStatsRectController.GetAnchoredY() * windowScaleY);
+                int subStatsTexWidth = Mathfs.RoundToInt(SubStatsRectController.GetWidth() * windowScaleX);
+                int subStatsTexHeight = Mathfs.RoundToInt(SubStatsRectController.GetHeight() * windowScaleY);
+                var subStatsTex = texMgr.Acquire(subStatsTexWidth, subStatsTexHeight, m_BufferTexture2D.format);
+                Texture2DExtension.CopyCroppedPixels(subStatsTex, m_BufferTexture2D, subStatsTexStartX, subStatsTexStartY);
+
+                var subStatsTexWithWhiteMask = texMgr.AcquireClone(subStatsTex);
+                subStatsTexWithWhiteMask.ApplyBlackMask(BlackThreshold, true);
+
+                var subStatsTexWithAlphaContrast = texMgr.AcquireClone(subStatsTex);
+                subStatsTexWithAlphaContrast.ApplyAlphaContrast(AlphaThreshold);
+
+                // Ocr texture to crop
+                texMgr.Release(m_SubStatsTexture2D);
+                // TextureFormat.RGB24 because Tesseract only supports 3 bytes per pixel
+                m_SubStatsTexture2D = texMgr.Acquire(subStatsTexWidth, subStatsTexHeight, TextureFormat.RGB24);
+                Texture2DExtension.BlendMultiply(m_SubStatsTexture2D, subStatsTexWithWhiteMask, subStatsTexWithAlphaContrast);
+
+                // Scan
+                m_Ocr.SetImage(m_SubStatsTexture2D);
+                scannedStr += m_Ocr.GetText();
+
                 BufferImage.texture = m_BufferTexture2D;
                 BufferImage.SetNativeSize();
+                MainStatImage.texture = m_MainStatTexture2D;
+                MainStatImage.SetNativeSize();
+                SubStatsImage.texture = m_SubStatsTexture2D;
+                SubStatsImage.SetNativeSize();
+
+                OutputString = scannedStr;
+
+                // Clean up
+                texMgr.Release(mainStatTex);
+                texMgr.Release(subStatsTex);
+                texMgr.Release(subStatsTexWithWhiteMask);
+                texMgr.Release(subStatsTexWithAlphaContrast);
 
                 var sb = new StringBuilder();
                 sb.Append(window.width).Append('(').Append(window.rawWidth).Append(')');
