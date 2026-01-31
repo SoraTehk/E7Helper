@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Sirenix.OdinInspector;
 using SoraTehk.E7Helper.Interop;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -7,6 +8,8 @@ using UnityEngine.InputSystem;
 
 namespace SoraTehk.E7Helper {
     public class GameWindow : SingletonBehaviour<GameWindow> {
+        [field: FoldoutGroup("Runtime"), SerializeField] public bool ForceClickThrough { get; private set; } = false;
+
         private IntPtr m_HWnd;
 
         private void Start() {
@@ -26,7 +29,26 @@ namespace SoraTehk.E7Helper {
             SetClickThrough(false);
         }
 
+        private void OnEnable() {
+            if (!ServiceLocator.TryGet<InputManager>(out var inputMgr)) return;
+            inputMgr.ToggleConsoleAction.performed += OnToggleConsoleAction_performed;
+        }
+        private void OnDisable() {
+            if (!ServiceLocator.TryGet<InputManager>(out var inputMgr)) return;
+            inputMgr.ToggleConsoleAction.performed -= OnToggleConsoleAction_performed;
+        }
+
+        private void OnToggleConsoleAction_performed(InputAction.CallbackContext ctx) {
+            ForceClickThrough = !ForceClickThrough;
+        }
+
         private void Update() {
+            // IsClickThrough override
+            if (ForceClickThrough) {
+                SetClickThrough(true);
+                return;
+            }
+
             // Default as click through
             var isClickThrough = true;
 
