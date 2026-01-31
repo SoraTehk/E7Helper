@@ -27,6 +27,12 @@
       "source": "embedded",
       "dependencies": {}
     },
+    "com.soratehk.soracore": {
+      "version": "file:C:/Projects/SoraCore/Packages/com.soratehk.soracore",
+      "depth": 0,
+      "source": "local",
+      "dependencies": {}
+    },
     "com.unity.editorcoroutines": {
       "version": "1.0.0",
       "depth": 1,
