@@ -1,0 +1,16 @@
+{
+    "m_Dictionary": {
+        "m_DictionaryValues": [
+            {
+                "type": "System.Boolean, System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e",
+                "key": "IET.DataMigrationV6",
+                "value": "{\"m_Value\":true}"
+            },
+            {
+                "type": "System.Boolean, System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e",
+                "key": "IET.DisplayWelcomeDialogOnStartup",
+                "value": "{\"m_Value\":true}"
+            }
+        ]
+    }
+}
